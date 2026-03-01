@@ -1,4 +1,4 @@
-#include "main.h"
+#include "main.c"
 #include <string.h>
 
 #define CE_HIGH() HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET)
