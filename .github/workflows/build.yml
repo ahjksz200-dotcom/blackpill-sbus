@@ -1,17 +1,17 @@
-name: Build STM32 Firmware
+name: PlatformIO Build
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -20,13 +20,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: |
+          pip install platformio
 
-      - name: Build firmware
-        run: pio run
-
-      - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware
-          path: .pio/build/stm32f401rc/firmware.bin
+      - name: Build project
+        run: |
+          pio run
