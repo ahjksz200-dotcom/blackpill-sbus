@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#define PPM_PIN PA0
 #define CHANNELS 8
 #define SYNC_PULSE 3000
 
