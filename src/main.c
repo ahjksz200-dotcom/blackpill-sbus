@@ -27,7 +27,6 @@ int main(void)
     MX_ADC1_Init();
     MX_TIM1_Init();
 
-    /* Bắt đầu PWM */
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
     while (1)
@@ -37,19 +36,18 @@ int main(void)
         HAL_ADC_PollForConversion(&hadc1, 10);
         adc_raw = HAL_ADC_GetValue(&hadc1);
 
-        /* ==== LỌC ADC (giảm rung) ==== */
+        /* ==== LỌC (mượt ga) ==== */
         adc_filtered = (adc_filtered * 3 + adc_raw) / 4;
 
-        /* ==== MAP GA ESC ==== */
-        pulse_target = 1000 + (adc_filtered * 1000) / 4095;
+        /* ==== MAP GA (giới hạn cho EDF) ==== */
+        pulse_target = 1000 + (adc_filtered * 600) / 4095; // max ~1600us
 
-        /* Giới hạn an toàn */
-        if (pulse_target < 1000) pulse_target = 1000;
-        if (pulse_target > 2000) pulse_target = 2000;
+        /* Deadzone */
+        if (pulse_target < 1050) pulse_target = 1000;
 
         /* ==== SOFT START ==== */
-        if (pulse_current < pulse_target) pulse_current++;
-        else if (pulse_current > pulse_target) pulse_current--;
+        if (pulse_current < pulse_target) pulse_current += 1;
+        else if (pulse_current > pulse_target) pulse_current -= 3;
 
         /* ==== XUẤT PWM ==== */
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, pulse_current);
@@ -58,16 +56,23 @@ int main(void)
     }
 }
 
+/* ================= GPIO ================= */
+static void MX_GPIO_Init(void)
+{
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_AFIO_CLK_ENABLE();
+}
+
 /* ================= ADC ================= */
 static void MX_ADC1_Init(void)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     __HAL_RCC_ADC1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
     /* PA0 = Analog */
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_0;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -88,16 +93,16 @@ static void MX_ADC1_Init(void)
     HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 }
 
-/* ================= TIM1 PWM ================= */
+/* ================= PWM ESC ================= */
 static void MX_TIM1_Init(void)
 {
     TIM_OC_InitTypeDef sConfigOC = {0};
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     __HAL_RCC_TIM1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
     /* PA8 = PWM */
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -112,19 +117,19 @@ static void MX_TIM1_Init(void)
     HAL_TIM_PWM_Init(&htim1);
 
     sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = 1000; // Min throttle
+    sConfigOC.Pulse = 1000; // min throttle
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 
     HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1);
 }
 
-/* ================= CLOCK 72MHz ================= */
+/* ================= CLOCK ================= */
 void SystemClock_Config(void)
 {
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-    /* HSE + PLL = 72MHz */
+    /* HSE 8MHz -> 72MHz */
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
     RCC_OscInitStruct.HSEState = RCC_HSE_ON;
     RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -149,7 +154,7 @@ void SystemClock_Config(void)
     HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 }
 
-/* ================= ERROR HANDLER ================= */
+/* ================= ERROR ================= */
 void Error_Handler(void)
 {
     while (1)
