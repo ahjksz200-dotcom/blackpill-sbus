@@ -25,7 +25,7 @@ int main(void)
     HAL_Delay(3000); // chờ ESC beep
 
     /* ==== TĂNG NHẸ GA ==== */
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 1200);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 2000);
 
     while (1)
     {
